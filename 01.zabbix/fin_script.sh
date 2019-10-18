@@ -1,21 +1,30 @@
 #!/bin/bash
-#variable to change
-zabpass=password
+#variables
+zabpass=zabbix
+
 
 if [[ $HOSTNAME == "pdv-zabserv" ]] ; then
 
 rpm -ivh https://repo.zabbix.com/zabbix/3.5/rhel/7/x86_64/zabbix-release-3.5-1.el7.noarch.rpm
+yum-config-manager --enable rhel-7-server-optional-rpms
+yum install zabbix-server-mysql zabbix-web-mysql -y
+
 yum install -y mariadb mariadb-server
 ln -s /usr/bin/resolveip /usr/libexec/resolveip
 /usr/bin/mysql_install_db --user=mysql
-mysql -u root <<EOF
+
+systemctl start mariadb.service
+
+
+
+mysql <<EOF
 create database zabbix character set utf8 collate utf8_bin;
-grant all privileges on zabbix.* to zabbix@localhost identified by $zabpass;
-quit;
+grant all privileges on zabbix.* to zabbix@localhost identified by 'zabbix';
 EOF
 
-yum install -y zabbix-server-mysql zabbix-web-mysql
+
 zcat /usr/share/doc/zabbix-server-mysql*/create.sql.gz | mysql -uzabbix -p$zabpass zabbix
+
 
 if [[ $(grep -E ^DBHost=* /etc/zabbix/zabbix_server.conf) == "" ]] ; then
 echo DBHost=localhost >> /etc/zabbix/zabbix_server.conf
@@ -54,17 +63,17 @@ if [[ $HOSTNAME == "pdv-zabclnt" ]] ; then
 rpm -ivh https://repo.zabbix.com/zabbix/3.5/rhel/7/x86_64/zabbix-release-3.5-1.el7.noarch.rpm
 yum install zabbix-agent -y
 
+sed -i "s/Hostname=Zabbix server/Hostname=pdv-zabclnt/" /etc/zabbix/zabbix_agentd.conf
+sed -i "s/Server=127.0.0.1/Server=pdv-zabserv/" /etc/zabbix/zabbix_agentd.conf
+sed -i "s/ServerActive=127.0.0.1/ServerActive=pdv-zabserv/" /etc/zabbix/zabbix_agentd.conf
 
-if [[ ! $(grep -E ^Server= /etc/zabbix/zabbix_agentd.conf) == "" ]] ; then
+if [[ $(grep -E ^ListenIP= /etc/zabbix/zabbix_agentd.conf) == "" ]] ; then
 cat << EOF >> /etc/zabbix/zabbix_agentd.conf
-Server=pdv-zabserv
 ListenIP=0.0.0.0
 ListenPort=10050
 StartAgents=3
-Hostname=pdv-zabclnt
 EOF
 fi
 systemctl start zabbix-agent
 systemctl enable zabbix-agent
 fi
-
