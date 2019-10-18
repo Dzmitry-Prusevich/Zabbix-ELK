@@ -1,0 +1,29 @@
+Vagrant.configure("2") do |config|
+config.vm.define "pdv-zabserv" do |zabserv|
+zabserv.vm.box = "sbeliakou/centos"
+zabserv.vm.box_url = "sbeliakou/centos"
+zabserv.vm.network :"private_network", ip: "192.168.56.201"
+zabserv.vm.hostname = "pdv-zabserv"
+zabserv.vm.provider :virtualbox do |vb|
+vb.customize ["modifyvm", :id, "--memory", "2048"]
+vb.name = "zabser"
+end
+
+zabserv.vm.provision "shell", path: "fin_script.sh"
+end
+
+
+config.vm.define "pdv-zabclnt" do |zabclnt|
+zabclnt.vm.box = "sbeliakou/centos"
+zabclnt.vm.box_url = "sbeliakou/centos"
+zabclnt.vm.network :"private_network", ip: "192.168.56.203"
+zabclnt.vm.hostname = "pdv-zabclnt"
+zabclnt.vm.provider :virtualbox do |vb|
+vb.customize ["modifyvm", :id, "--memory", "1024"]
+vb.name = "zabcl"
+end
+
+zabclnt.vm.provision "shell", path: "fin_script.sh"
+end
+
+end
